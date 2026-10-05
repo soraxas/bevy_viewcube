@@ -1,0 +1,74 @@
+[package]
+name = "bevy_viewcube"
+version = "0.2.0"
+edition = "2024"
+description = "A 3D orientation view cube"
+license = "MIT"
+repository = "https://github.com/soraxas/bevy_viewcube"
+keywords = ["bevy", "editor", "camera", "viewcube"]
+categories = ["graphics"]
+readme = "README.md"
+
+[features]
+default = ["ui"]
+# Driver adapting `bevy_editor_cam`'s `EditorCam` (`driver::EditorCamDriverPlugin`).
+# Without it the cube has no external camera dependency: use
+# `driver::BasicDriverPlugin`, or your own driver reading `CameraRequest`.
+editor_cam = ["dep:bevy_editor_cam"]
+# The home button and frame dropdown, built with `bsn!` Bevy UI nodes and
+# rendered by a dedicated overlay UI camera. Without it the cube has no
+# buttons: drive it with the `SnapView` / `SetFrame` messages from your own UI.
+ui = [
+    "bevy/bevy_ui",
+    "bevy/bevy_ui_render",
+    "bevy/bevy_scene",
+    "bevy/bevy_text",
+    "bevy/ui_picking",
+]
+
+[dependencies]
+bevy = { version = "0.19", default-features = false, features = [
+    "bevy_pbr",      # StandardMaterial, lights (and the render stack)
+    "bevy_picking",  # clicking / dragging the cube
+    "bevy_text",     # the `Font` asset the captions are rasterised from
+    "default_font",  # Bevy's built-in font, the cube's default (no asset files)
+] }
+
+# Rasterises the cube's captions / axis letters from the `bevy_text` `Font` asset.
+# Already in the tree through `bevy_text`, so no extra compile.
+swash = "0.2"
+
+bevy_editor_cam = { git = "https://github.com/soraxas/bevy_editor_cam.git", branch = "0.19", default-features = false, optional = true }
+
+[dev-dependencies]
+# The example needs a full app: window, default font, mesh picking etc.
+bevy = "0.19"
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
+required-features = ["editor_cam"]
+
+[[example]]
+name = "axes"
+path = "examples/axes.rs"
+required-features = ["editor_cam"]
+
+[[example]]
+name = "frames"
+path = "examples/frames.rs"
+required-features = ["editor_cam"]
+
+# No bevy_editor_cam at all: a plain Camera3d moved by `BasicDriverPlugin`.
+[[example]]
+name = "builtin"
+path = "examples/builtin.rs"
+
+# Small wasm for the browser example (`examples/wasm/serve.sh`).
+[profile.web]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = "debuginfo"
+panic = "abort"

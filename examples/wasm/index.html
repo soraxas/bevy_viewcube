@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>bevy_viewcube</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1b1d22; overflow: hidden; }
+      #root { position: fixed; inset: 0; }
+      canvas { width: 100%; height: 100%; touch-action: none; outline: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root"><canvas id="bevy"></canvas></div>
+    <script type="module">
+      import init from "./out/app.js";
+      init().catch((e) => {
+        if (!String(e).includes("Using exceptions for control flow")) throw e;
+      });
+    </script>
+  </body>
+</html>
