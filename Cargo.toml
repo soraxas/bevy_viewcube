@@ -44,6 +44,11 @@ bevy_editor_cam = { git = "https://github.com/soraxas/bevy_editor_cam.git", bran
 # The example needs a full app: window, default font, mesh picking etc.
 bevy = "0.19"
 
+# The browser needs a renderer backend; WebGL2 runs on every browser / phone.
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+bevy = { version = "0.19", features = ["webgl2"] }
+js-sys = "0.3"
+
 [[example]]
 name = "basic"
 path = "examples/basic.rs"

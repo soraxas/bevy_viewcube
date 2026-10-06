@@ -101,6 +101,19 @@ struct Building {
     size: Vec3,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn clock_seed() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(1, |d| d.as_nanos() as u64)
+}
+
+/// `SystemTime` panics in the browser.
+#[cfg(target_arch = "wasm32")]
+fn clock_seed() -> u64 {
+    (js_sys::Math::random() * u64::MAX as f64) as u64
+}
+
 /// Three buildings with pseudo-random orientations: a free yaw plus a few
 /// degrees of pitch/roll, so each frame differs visibly from the world axes.
 /// Deterministic per run (seeded from `VIEW_CUBE_SEED`, else the clock), and
@@ -111,11 +124,7 @@ fn buildings() -> [Building; 3] {
         std::env::var("VIEW_CUBE_SEED")
             .ok()
             .and_then(|v| v.parse().ok())
-            .unwrap_or_else(|| {
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_or(1, |d| d.as_nanos() as u64)
-            })
+            .unwrap_or_else(clock_seed)
     });
     // xorshift64*: plenty for picking angles, no extra dependency.
     let mut state = seed | 1;
