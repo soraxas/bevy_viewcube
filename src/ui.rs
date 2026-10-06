@@ -118,7 +118,7 @@ fn setup_ui(
         .map(|f| f.name.clone())
         .unwrap_or_default();
     commands
-        .queue_spawn_scene(ui_root(settings.0.font.clone(), name))
+        .queue_spawn_scene(ui_root(settings.0.font.clone(), settings.0.dropdown_caret.clone(), name))
         .insert((UiTargetCamera(camera), GlobalZIndex(1000)));
 }
 
@@ -130,7 +130,7 @@ fn font_source(font: Option<String>) -> FontSourceTemplate {
     }
 }
 
-fn ui_root(font: Option<String>, name: String) -> impl Scene {
+fn ui_root(font: Option<String>, caret: String, name: String) -> impl Scene {
     bsn! {
         CubeUiRoot
         Node {
@@ -146,7 +146,7 @@ fn ui_root(font: Option<String>, name: String) -> impl Scene {
             Children [
                 ({home_button()}),
                 ({fit_button()}),
-                ({frame_dropdown(font, name)}),
+                ({frame_dropdown(font, caret, name)}),
             ]
         )]
     }
@@ -271,7 +271,7 @@ fn fit_button() -> impl Scene {
     }
 }
 
-fn frame_dropdown(font: Option<String>, name: String) -> impl Scene {
+fn frame_dropdown(font: Option<String>, caret: String, name: String) -> impl Scene {
     let caret_font = font.clone();
     bsn! {
         CubeFrameDropdown
@@ -307,7 +307,7 @@ fn frame_dropdown(font: Option<String>, name: String) -> impl Scene {
                     Pickable { should_block_lower: false, is_hoverable: false }
                 ),
                 (
-                    Text("v")
+                    Text({caret})
                     TextFont { font: {font_source(caret_font)}, font_size: px(9.0) }
                     TextColor(TEXT_DIM)
                     Pickable { should_block_lower: false, is_hoverable: false }

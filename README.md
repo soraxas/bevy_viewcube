@@ -55,8 +55,21 @@ The cube renders on its own render layer through an overlay camera, so it never
 touches your scene.
 
 **Settings vs config:** options fixed at build time (style, render layer, font,
-axis letters, face captions, axes placement) are `ViewCubeSettings` on the
+axis letters, face captions, axes placement, dropdown arrow) are `ViewCubeSettings` on the
 plugin. Runtime state is the `ViewCubeConfig` resource and `ViewCubeFrames`.
+
+```rust
+ViewCubePlugin {
+    settings: ViewCubeSettings {
+        // The dropdown arrow defaults to a plain "v" (every font has it).
+        // Use a nicer glyph if your font has it; "" hides the arrow.
+        dropdown_caret: "▾".into(),
+        font: Some("fonts/Inter-Bold.otf".into()),
+        ..default()
+    },
+    ..default()
+}
+```
 
 ## Features
 

@@ -8,7 +8,7 @@
 //! text's ink, so a [`Transform`] scale sets the font size.
 
 use bevy::asset::RenderAssetUsages;
-use bevy::image::ImageSampler;
+use bevy::image::{ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use swash::scale::{Render, ScaleContext, Source};
@@ -86,6 +86,9 @@ fn build_captions(
             continue;
         };
         let (w, h) = (raster.width as f32, raster.height as f32);
+        // Plain (non-sRGB) RGBA: the glyphs are white, only alpha matters, and
+        // it is the format every GPU, mobile WebGL included, samples reliably.
+        let (data, mips) = with_mips(raster.width, raster.height, &raster.rgba);
         let mut image = Image::new(
             Extent3d {
                 width: raster.width,
@@ -94,10 +97,17 @@ fn build_captions(
             },
             TextureDimension::D2,
             raster.rgba,
-            TextureFormat::Rgba8UnormSrgb,
+            TextureFormat::Rgba8Unorm,
             RenderAssetUsages::RENDER_WORLD,
         );
-        image.sampler = ImageSampler::linear();
+        image.data = Some(data);
+        image.texture_descriptor.mip_level_count = mips;
+        // Trilinear, but at most one level down: deeper levels wash the thin
+        // strokes out.
+        image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+            lod_max_clamp: 1.0,
+            ..ImageSamplerDescriptor::linear()
+        });
         entity.insert((
             Mesh3d(meshes.add(Rectangle::new(w / caption.raster_px, h / caption.raster_px))),
             MeshMaterial3d(materials.add(StandardMaterial {
@@ -109,6 +119,39 @@ fn build_captions(
             })),
         ));
     }
+}
+
+/// `rgba` followed by every smaller mip level (2×2 box filter), and the level
+/// count. Without mips, text shrunk on a high-DPI or small screen shimmers, and
+/// a trilinear sampler on a one-level texture upsets some mobile GL drivers.
+fn with_mips(width: u32, height: u32, rgba: &[u8]) -> (Vec<u8>, u32) {
+    let mut data = rgba.to_vec();
+    let (mut w, mut h) = (width as usize, height as usize);
+    let mut level = 1;
+    let mut prev = rgba.to_vec();
+    while w > 1 || h > 1 {
+        let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
+        let mut next = vec![0u8; nw * nh * 4];
+        for y in 0..nh {
+            for x in 0..nw {
+                for c in 0..4 {
+                    let at = |sx: usize, sy: usize| {
+                        prev[(sy.min(h - 1) * w + sx.min(w - 1)) * 4 + c] as u32
+                    };
+                    let sum = at(2 * x, 2 * y)
+                        + at(2 * x + 1, 2 * y)
+                        + at(2 * x, 2 * y + 1)
+                        + at(2 * x + 1, 2 * y + 1);
+                    next[(y * nw + x) * 4 + c] = ((sum + 2) / 4) as u8;
+                }
+            }
+        }
+        data.extend_from_slice(&next);
+        prev = next;
+        (w, h) = (nw, nh);
+        level += 1;
+    }
+    (data, level)
 }
 
 /// White RGBA pixels whose alpha is the text's coverage, tightly cropped to the
@@ -218,6 +261,25 @@ mod tests {
         let b = rasterise(FONT, "BOTTOM", 48.0, 0.0).unwrap();
         assert!(b.width > a.width);
         assert!(rasterise(FONT, "", 48.0, 0.0).is_none());
+    }
+
+    #[test]
+    fn mip_chain_is_complete() {
+        let (w, h) = (37u32, 13u32);
+        let base: Vec<u8> = (0..w * h * 4).map(|i| (i % 251) as u8).collect();
+        let (data, levels) = with_mips(w, h, &base);
+        assert_eq!(levels, 6); // 37 -> 18 -> 9 -> 4 -> 2 -> 1
+        let (mut mw, mut mh, mut total) = (w as usize, h as usize, 0);
+        for _ in 0..levels {
+            total += mw * mh * 4;
+            (mw, mh) = ((mw / 2).max(1), (mh / 2).max(1));
+        }
+        assert_eq!(data.len(), total);
+        assert_eq!(&data[..base.len()], &base[..]);
+        // A solid texture stays solid down the chain.
+        let (solid, n) = with_mips(8, 8, &[255; 8 * 8 * 4]);
+        assert_eq!(n, 4);
+        assert!(solid.iter().all(|&b| b == 255));
     }
 
     #[test]

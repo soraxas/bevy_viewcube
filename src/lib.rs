@@ -241,6 +241,10 @@ pub struct ViewCubeSettings {
     pub axis_labels: ViewCubeLabels,
     /// Face captions.
     pub face_labels: ViewCubeFaceLabels,
+    /// The arrow shown after the frame name in the dropdown button. Defaults to
+    /// a plain "v", which every font has; set `"▾"` (or an icon-font glyph) if
+    /// your [`font`](Self::font) has it. Empty hides it.
+    pub dropdown_caret: String,
 }
 
 impl Default for ViewCubeSettings {
@@ -252,6 +256,7 @@ impl Default for ViewCubeSettings {
             font: None,
             axis_labels: ViewCubeLabels::default(),
             face_labels: ViewCubeFaceLabels::default(),
+            dropdown_caret: "v".to_string(),
         }
     }
 }
